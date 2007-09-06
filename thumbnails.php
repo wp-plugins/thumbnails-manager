@@ -241,8 +241,8 @@ if (isset($message) && $message > 0) : ?>
 
 	if (! current_user_can('edit_others_posts') )
 		$and_user = "AND post_author = " . $user_ID;
-	$attachments = $wpdb->get_results("SELECT ID, post_date, post_title, post_content, post_mime_type, guid FROM $wpdb->posts WHERE post_type = 'attachment' $and_user ORDER BY post_date_gmt DESC LIMIT $start, $numberperpage", ARRAY_A);
-	$total = $wpdb->get_var( "SELECT count(*) FROM $wpdb->posts WHERE post_type = 'attachment' $and_user" );
+	$attachments = $wpdb->get_results("SELECT ID, post_date, post_title, post_content, post_mime_type, guid FROM $wpdb->posts WHERE post_type = 'attachment' AND post_mime_type LIKE 'image%' $and_user ORDER BY post_date_gmt DESC LIMIT $start, $numberperpage", ARRAY_A);
+	$total = $wpdb->get_var( "SELECT count(*) FROM $wpdb->posts WHERE post_type = 'attachment' AND post_mime_type LIKE 'image%' $and_user" );
 	
 		echo "<div class='wrap'>
 <h2>Thumbnails Manager Settings</h2>
