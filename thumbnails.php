@@ -473,4 +473,13 @@ add_filter('wp_thumbnail_max_side_length', 'thm_set_default_thumbnails_size' ,10
 add_filter('wp_create_thumbnail', 'thm_create_thumbnail');
 add_filter('wp_generate_attachment_metadata', 'thm_correct_metadata');
 
+if (!get_option('thm_version') || get_option('thm_version') != '0.7') {
+	update_option('thm_version', '0.7');
+	if (!get_option('thm_strategy')) update_option('thm_strategy', 'scale');
+	if (!get_option('thm_width')) update_option('thm_width', 120);
+	if (!get_option('thm_height')) update_option('thm_height', 80);
+	if (!get_option('thm_ratio')) update_option('thm_ratio', 50);
+	if (!get_option('thm_number_per_page')) update_option('thm_number_per_page', 20);
+}
+
 ?>

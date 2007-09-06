@@ -20,6 +20,7 @@ A small list of features:*	Change the default ratio for the thumbnails.*	Disp
 New in v0.7:
 
 *	Thumbnails creation size strategy: scaling, maximum size, fixed size
+*	A bug correction (impossible to save ratio value)
 
 == Installation ==
 
