@@ -4,7 +4,7 @@ Plugin Name: Thumbnails Manager
 Plugin URI: http://olive.juan.free.fr/blog/
 Description: Thumbnails Manager allows a more fine management of thumbnails in wordpress. Feedback wellcomed.
 Author: Olivier Juan
-Version: 0.6
+Version: 0.7
 Author URI: http://olive.juan.free.fr/
 */
 
@@ -45,10 +45,13 @@ for ($i=0; $i<count($wpvarstoreset); $i += 1) {
 	switch($action) {
 
 	case 'settings':
-	$ratio = get_option('thm_ratio');
-	check_admin_referer('update-ratio_' . $ratio);
+	$thm_ratio = get_option('thm_ratio');
+	check_admin_referer('update-settings_' . $thm_ratio);
 
-	update_option('thm_ratio', (int)$_POST['ratio']);
+	update_option('thm_ratio', (int)$_POST['thm_ratio']);
+	update_option('thm_width', (int)$_POST['thm_width']);
+	update_option('thm_height', (int)$_POST['thm_height']);
+	update_option('thm_strategy', $_POST['strategy']);
 
 	wp_redirect($parent_file . '?page=' . $plugin_page . '&message=4');
 
@@ -225,15 +228,10 @@ if (isset($message) && $message > 0) : ?>
 <div id="message" class="updated fade"><p><?php echo $messages[$message]; ?></p></div>
 <?php endif;
 	$numberperpage = get_option('thm_number_per_page');
-	if (!$numberperpage) {
-		$numberperpage = 20;
-		update_option('thm_number_per_page', $numberperpage);
-	}
-	$ratio = get_option('thm_ratio');
-	if (!$ratio) {
-		$ratio = 50;
-		update_option('thm_ratio', $ratio);
-	}
+	$thm_ratio = get_option('thm_ratio');
+	$thm_width = get_option('thm_width');
+	$thm_height = get_option('thm_height');
+	$thm_strategy = get_option('thm_strategy');
 	if ( isset( $_GET['apage'] ) )
 		$page = (int) $_GET['apage'];
 	else
@@ -248,15 +246,30 @@ if (isset($message) && $message > 0) : ?>
 	
 		echo "<div class='wrap'>
 <h2>Thumbnails Manager Settings</h2>
-<p>This plugin extends and expands the management functionality of Thumbnail files in WordPress. Feedback is extremely wellcomed: <a href='http://olive.juan.free.fr/blog/index.php/thumbnails-manager-plugin-for-wordpress/'>Leave a comment on this entry on my blog!</a>.</p>
-<p>First you can set the default resize ratio of wordpress to a desired value:</p>";
+<p>This plugin extends and expands the management functionality of Thumbnail files in WordPress. Feedback is extremely wellcomed: <a href='http://olive.juan.free.fr/blog/index.php/thumbnails-manager-plugin-for-wordpress/'>Leave a comment on this entry on my blog!</a>.</p>";
 ?>
 <form name="ratiothm" action="<?php echo $parent_file . '?page=' . $plugin_page . '&amp;noheader=1' ?>" method="post">
-<?php wp_nonce_field('update-settings_' .  $ratio); ?>
+<?php wp_nonce_field('update-settings_' .  $thm_ratio); ?>
 <table class="editform" width="100%" cellspacing="2" cellpadding="5">
 <tr>
+<th width="33%" scope="row">First you can set the default strategy for thumbnails creation:</th>
+<td><input name="strategy" type="radio" value="scale"<?php if ($thm_strategy == 'scale') echo ' checked'; ?>/> <b>Fixed scale</b>: thumbnail is a scaled version of the image, ratio is keeped (standard behavor of WordPress)</td>
+</tr>
+<tr>
+<td></td>
+<td><input name="strategy" type="radio" value="maxsize"<?php if ($thm_strategy == 'maxsize') echo ' checked'; ?>/> <b>Maximum size</b>: thumbnail size cannot exceed a given size, ratio is keeped</td>
+</tr>
+<tr>
+<td></td>
+<td><input name="strategy" type="radio" value="fixedsize"<?php if ($thm_strategy == 'fixedsize') echo ' checked'; ?>/> <b>Fixed size</b>: thumbnail size is fixed, ratio is not keeped (cropping may occur)</td>
+</tr>
+<tr>
 <th width="33%" scope="row"><?php _e('Thumbnail default resize ratio:') ?></th>
-<td><input name="ratio" type="text" value="<?php echo $ratio; ?>" size="3" />%<input type="hidden" name="action" value="settings" /></td>
+<td><input name="thm_ratio" type="text" value="<?php echo $thm_ratio; ?>" size="3" />%</td>
+</tr>
+<tr>
+<th width="33%" scope="row"><?php _e('Thumbnail default size:') ?></th>
+<td><input name="thm_width" type="text" value="<?php echo $thm_width; ?>" size="3" />x<input name="thm_height" type="text" value="<?php echo $thm_height; ?>" size="3" /> (Width x Height in pixel)<input type="hidden" name="action" value="settings" /></td>
 </tr>
 </table>
 <p class="submit"><input type="submit" name="submit" value="<?php _e('Save Settings') ?> &raquo;" /></p>
@@ -361,20 +374,88 @@ add_action('admin_menu', 'thm_manage_page');
 
 function thm_set_default_thumbnails_size ($max_size, $attachment_id, $file) {
 	$attachment = get_post( $attachment_id );
-	$ratio = get_option('thm_ratio');
-	if (!$ratio) {
-		$ratio = 50;
-		update_option('thm_ratio', $ratio);
+	$thm_strategy = get_option('thm_strategy');
+	if ($thm_strategy == 'scale') {
+		$thm_ratio = get_option('thm_ratio');
+		$thm_ratio /= 100.0;
+	
+		if ( preg_match('!^image/!', get_post_mime_type( $attachment )) ) {
+			$imagesize = getimagesize($file);
+			$width = $imagesize['0']*$thm_ratio;
+			$height = $imagesize['1']*$thm_ratio;
+			$max_size = $width > $height ? $width : $height;
+		}
+		return $max_size;
+	} else if ($thm_strategy == 'maxsize') {
+		$thm_width = get_option('thm_width');
+		$thm_height = get_option('thm_height');
+		if ( preg_match('!^image/!', get_post_mime_type( $attachment )) ) {
+			$imagesize = getimagesize($file);
+			$width = $thm_width / $imagesize['0'];
+			$height = $thm_height / $imagesize['1'];
+			$max_ratio = $width < $height ? $width : $height;
+			$max_width = $max_ratio * $imagesize['0'];
+			$max_height = $max_ratio * $imagesize['1'];
+			$max_size = $max_width > $max_height ? $max_width : $max_height;
+		}
+		return $max_size;
+	} else if ($thm_strategy == 'fixedsize') {
+		$thm_width = get_option('thm_width');
+		$thm_height = get_option('thm_height');
+		if ( preg_match('!^image/!', get_post_mime_type( $attachment )) ) {
+			$imagesize = getimagesize($file);
+			$width = $thm_width / $imagesize['0'];
+			$height = $thm_height / $imagesize['1'];
+			$min_ratio = $width > $height ? $width : $height;
+			$max_width = $min_ratio * $imagesize['0'];
+			$max_height = $min_ratio * $imagesize['1'];
+			$max_size = $max_width > $max_height ? $max_width : $max_height;
+		}
+		return $max_size;
 	}
-	$ratio /= 100.0;
+}
 
-	if ( preg_match('!^image/!', get_post_mime_type( $attachment )) ) {
-		$imagesize = getimagesize($file);
-		$width = $imagesize['0']*$ratio;
-		$height = $imagesize['1']*$ratio;
-		$max_size = $width > $height ? $width : $height;
+function thm_create_thumbnail($file) {
+	$thm_strategy = get_option('thm_strategy');
+	if ($thm_strategy == 'fixedsize') {
+		$thm_width = get_option('thm_width');
+		$thm_height = get_option('thm_height');
+		if ( file_exists( $file ) ) {
+			$type = getimagesize( $file );
+			if ( $type[2] == 1 ) {
+				$image = imagecreatefromgif( $file );
+			}
+			elseif ( $type[2] == 2 ) {
+				$image = imagecreatefromjpeg( $file );
+			}
+			elseif ( $type[2] == 3 ) {
+				$image = imagecreatefrompng( $file );
+			}
+			if ( function_exists( 'imageantialias' ))
+				imageantialias( $image, TRUE );
+
+			$image_attr = getimagesize( $file );
+			
+			$thumbnail = imagecreatetruecolor( $thm_width, $thm_height);
+			@ imagecopyresampled( $thumbnail, $image, 0, 0, ($image_attr[0] - $thm_width)/2, ($image_attr[1] - $thm_height)/2, $thm_width, $thm_height, $thm_width, $thm_height );
+			if ( $type[2] == 1 ) {
+				if (!imagegif( $thumbnail, $file ) ) {
+					$error = __( "Thumbnail path invalid" );
+				}
+			}
+			elseif ( $type[2] == 2 ) {
+				if (!imagejpeg( $thumbnail, $file ) ) {
+					$error = __( "Thumbnail path invalid" );
+				}
+			}
+			elseif ( $type[2] == 3 ) {
+				if (!imagepng( $thumbnail, $file ) ) {
+					$error = __( "Thumbnail path invalid" );
+				}
+			}
+		}
 	}
-	return $max_size;
+	return $file;
 }
 
 function thm_correct_metadata($metadata) {
@@ -389,6 +470,16 @@ function thm_correct_metadata($metadata) {
 }
 
 add_filter('wp_thumbnail_max_side_length', 'thm_set_default_thumbnails_size' ,10 ,3);
+add_filter('wp_create_thumbnail', 'thm_create_thumbnail');
 add_filter('wp_generate_attachment_metadata', 'thm_correct_metadata');
+
+if (!get_option('thm_version') || get_option('thm_version') != '0.7') {
+	update_option('thm_version', '0.7');
+	if (!get_option('thm_strategy')) update_option('thm_strategy', 'scale');
+	if (!get_option('thm_width')) update_option('thm_width', 120);
+	if (!get_option('thm_height')) update_option('thm_height', 80);
+	if (!get_option('thm_ratio')) update_option('thm_ratio', 50);
+	if (!get_option('thm_number_per_page')) update_option('thm_number_per_page', 20);
+}
 
 ?>
