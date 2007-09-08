@@ -3,7 +3,7 @@ Contributors: ojuan
 Donate link: http://olive.juan.free.fr/blog/index.php/thumbnails-manager-plugin-for-wordpress/
 Tags: images, admin
 Requires at least: 2.0.2
-Tested up to: 2.2.2
+Tested up to: 2.2.3
 Stable tag: 0.7
 
 Thumbnails Manager helps you to manage your thumbnails within the administrator panel. You can define a default ratio for thumbnail creation, rename, change the description or even delete your thumbnails.
